@@ -565,7 +565,7 @@ class DollarCostAveraging(Clip):
         price_lbl = T("price", 18, GOLD).next_to(ax.c2p(0, 1600), RIGHT, buff=0.1)
         self.add(price_lbl)
 
-        base_y = -3.55
+        base_y = -3.4
         shares_lbl = T("shares bought (each dot = 0.01 share)", 18, MUTED).move_to([ax.c2p(0, 0)[0], base_y - 0.3, 0], aligned_edge=LEFT)
         self.add(shares_lbl)
         steps = []
@@ -579,19 +579,59 @@ class DollarCostAveraging(Clip):
             seg = Line(ax.c2p(i - 1, prices[i - 1]), ax.c2p(i, p), color=GOLD, stroke_width=3) if i else VMobject()
             steps.append(AnimationGroup(Create(seg), FadeIn(pt), LaggedStart(*[FadeIn(dot, shift=DOWN * 0.2) for dot in col], lag_ratio=0.05)))
         self.play(LaggedStart(*steps, lag_ratio=0.6), run_time=10)
-        self.hold(1.5)
+        cheapest = min(range(n), key=lambda i: prices[i])
+        self.play(FadeIn(T("the crash months buy the most shares", 20, BLUE).next_to(dots_all[cheapest], UP, buff=0.15)))
+        self.hold()
+
+        # The alternative: stop buying when it gets scary, restart once it feels calm
+        paused = [i for i, m in enumerate(months) if "2008-10" <= m < "2010-01"]
+        restart = months.index("2010-01")
+        x0, x1 = ax.c2p(paused[0] - 0.5, 600)[0], ax.c2p(paused[-1] + 0.5, 600)[0]
+        span = Rectangle(width=x1 - x0, height=ax.y_length, stroke_width=0, fill_color=ORANGE, fill_opacity=0.14)
+        span.move_to([(x0 + x1) / 2, ax.get_center()[1], 0])
+        why = T("what if you paused here, and restarted once it felt calm?", 20, ORANGE).next_to(span, DOWN, buff=0.75)
+        self.play(FadeIn(span), FadeIn(why), *[dots_all[i].animate.set_opacity(0.12) for i in paused])
+        self.hold()
 
         shares = sum(100 / p for p in prices)
-
-        paid, worth = 100 * n, shares * prices[-1]
-        lump = paid * prices[-1] / prices[0]
+        pauser = sum(100 / prices[i] for i in range(n) if i not in paused) + 100 * len(paused) / prices[restart]
         result = VGroup(
-            VGroup(T(f"{money(paid)} in, monthly", 22), T(money(worth), 36, BLUE, weight=MEDIUM)).arrange(DOWN, buff=0.08),
-            VGroup(T(f"{money(paid)} in, all in Jan 2008", 22), T(money(lump), 36, ORANGE, weight=MEDIUM)).arrange(DOWN, buff=0.08),
+            VGroup(T("kept buying every month", 22), T(money(shares * prices[-1]), 36, BLUE, weight=MEDIUM)).arrange(DOWN, buff=0.08),
+            VGroup(T("paused in the crash", 22), T(money(pauser * prices[-1]), 36, ORANGE, weight=MEDIUM)).arrange(DOWN, buff=0.08),
         ).arrange(RIGHT, buff=1.2).move_to(ax.get_center() + DOWN * 2.35 + RIGHT * 2.8)
-        self.play(FadeIn(result))
-        self.add(source("S&P 500 monthly average prices (Shiller), price only. Value at Dec 2010.").to_corner(UR, buff=0.25))
+        self.play(FadeOut(why), FadeIn(result))
+        self.add(source(f"Both put in {money(100 * n)}. S&P 500 monthly average prices (Shiller), price only. "
+                        "Value at Dec 2010.").to_corner(UR, buff=0.25))
         self.hold(4)
+        self.clear()
+
+
+class LumpSum(Clip):
+    """Already have the money? All at once vs. spread over 12 months, every start month since 1927."""
+
+    def construct(self):
+        rows = DATA["lump_sum"]
+        xs = [year_of(r["start"]) for r in rows]
+        edges = [r["edge"] for r in rows]
+        lo, hi = math.floor(min(edges) * 10) / 10, math.ceil(max(edges) * 10) / 10
+        ax = axes([1927, 2023], [lo, hi], 11.4, 5).shift(DOWN * 0.35 + RIGHT * 0.3)
+        title = VGroup(
+            T("Already have a lump sum? Invest it all at once, or spread it over 12 months?", 26),
+            T("Value one year later, all at once compared with spread out, for every start month since 1927", 22, MUTED),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.12).to_corner(UL, buff=0.5)
+        self.play(FadeIn(title), Create(ax), FadeIn(x_labels(ax, [1930, 1950, 1970, 1990, 2010])),
+                  FadeIn(y_labels(ax, [v for v in (-0.4, -0.2, 0.2, 0.4) if lo <= v <= hi], lambda v: f"{v:+.0%}")))
+        self.add(Line(ax.c2p(1927, 0), ax.c2p(2023, 0), color=MUTED, stroke_width=1.5))
+        sooner = segments([(ax.c2p(x, 0), ax.c2p(x, e)) for x, e in zip(xs, edges) if e > 0], BLUE, 1.6)
+        later = segments([(ax.c2p(x, 0), ax.c2p(x, e)) for x, e in zip(xs, edges) if e <= 0], ORANGE, 1.6)
+        self.play(Create(sooner), Create(later), run_time=5, rate_func=linear)
+        share = sum(e > 0 for e in edges) / len(edges)
+        self.play(
+            FadeIn(T(f"all at once ahead: {share:.0%} of the time", 22, BLUE).next_to(ax.c2p(2023, hi * 0.85), LEFT, buff=0)),
+            FadeIn(T(f"spread out ahead: {1 - share:.0%}", 22, ORANGE).next_to(ax.c2p(2023, lo * 0.85), LEFT, buff=0)),
+        )
+        self.add(source("S&P 500 with dividends, monthly averages, 1927–2023 (Shiller). Cash waiting to be invested earns nothing here."))
+        self.hold(5)
         self.clear()
 
 
@@ -706,7 +746,7 @@ class BeatTheCouch(Clip):
 
 
 class TimingRules(Clip):
-    """The same rule on every 2-year window since 1928, then 16 variations of it."""
+    """The same rule on every 2-year window since 1928."""
 
     def construct(self):
         w = DATA["all_windows"]
@@ -730,33 +770,7 @@ class TimingRules(Clip):
             FadeIn(T(f"couch ahead: {1 - wins / len(edges):.0%}", 22, BLUE).next_to(ax.c2p(2018, lo * 0.8), LEFT, buff=0)),
         )
         self.add(source(f"{len(edges)} overlapping 2-year windows (one per month) in which the rule traded. S&P 500 daily closes, price only."))
-        self.hold(4)
-        self.clear()
-
-        # Maybe the thresholds were wrong? Try 16 rules
-        grid = DATA["rule_grid"]
-        levels = grid["levels"]
-        title = VGroup(
-            T("Maybe it's the numbers? Try 16 versions of the rule", 28),
-            T("How often each one beat the couch, 1928 – 2019", 22, MUTED),
-        ).arrange(DOWN, aligned_edge=LEFT, buff=0.12).to_corner(UL, buff=0.5)
-        cells = VGroup()
-        for r, row in enumerate(grid["win_rate"]):
-            for c, rate in enumerate(row):
-                fill = interpolate_color(ManimColor(FAINT), ManimColor(ORANGE), min(rate / 0.5, 1))
-                sq = Square(1.15, stroke_color=BG, stroke_width=4, fill_color=fill, fill_opacity=1)
-                sq.move_to([c * 1.15, -r * 1.15, 0])
-                cells.add(VGroup(sq, T(f"{rate:.0%}", 26, INK, weight=MEDIUM).move_to(sq)))
-        cells.move_to(DOWN * 0.75 + RIGHT * 0.6)
-        cols = VGroup(*[T(f"{v:.0%}", 20, MUTED).next_to(cells[c][0], UP, buff=0.15) for c, v in enumerate(levels)])
-        rows = VGroup(*[T(f"{v:.0%}", 20, MUTED).next_to(cells[r * 4][0], LEFT, buff=0.15) for r, v in enumerate(levels)])
-        col_title = T("buy back after a bounce of", 20).next_to(cols, UP, buff=0.2)
-        row_title = T("sell after\na drop of", 20).next_to(rows, LEFT, buff=0.3)
-        self.play(FadeIn(title), FadeIn(cols), FadeIn(rows), FadeIn(col_title), FadeIn(row_title))
-        self.play(LaggedStart(*[FadeIn(c, scale=0.85) for c in cells], lag_ratio=0.08), run_time=2.5)
-        best = max(max(row) for row in grid["win_rate"])
-        self.play(FadeIn(caption(f"Best of all 16: the rule won {best:.0%} of the time", 30, GOLD)))
-        self.hold(4)
+        self.hold(5)
         self.clear()
 
 
@@ -810,108 +824,38 @@ class BestDays(Clip):
 # Taxes
 # ---------------------------------------------------------------------------
 class Taxes(Clip):
-    """Holding over a year lowers the rate; holding for decades defers the bill."""
+    """Same returns and the same tax rate: paying every year vs. once at the end."""
+
+    RATE = 0.20
 
     def construct(self):
-        line = Line(LEFT * 5, RIGHT * 5, color=FAINT, stroke_width=3).shift(UP * 0.6)
-        buy = VGroup(Dot(line.get_start(), color=INK), T("buy", 22).next_to(line.get_start(), UP, buff=0.2))
-        mark = Line(UP * 0.3, DOWN * 0.3, color=GOLD, stroke_width=4).move_to(line.get_center())
-        year = T("1 year", 22, GOLD).next_to(mark, UP, buff=0.15)
-        short = Line(line.get_start(), line.get_center(), color=ORANGE, stroke_width=10)
-        long = Line(line.get_center(), line.get_end(), color=BLUE, stroke_width=10)
-        self.play(Create(line), FadeIn(buy))
-        self.play(Create(mark), FadeIn(year))
-        self.play(Create(short))
-        st = VGroup(T("sell within a year", 22, MUTED), T("10 – 37%", 40, ORANGE, weight=MEDIUM),
-                    T("taxed like your paycheck", 20, MUTED)).arrange(DOWN, buff=0.1).next_to(short, DOWN, buff=0.4)
-        self.play(FadeIn(st))
-        self.play(Create(long))
-        lt = VGroup(T("hold over a year", 22, MUTED), T("0%, 15% or 20%", 40, BLUE, weight=MEDIUM),
-                    T("many students qualify for 0%", 20, MUTED)).arrange(DOWN, buff=0.1).next_to(long, DOWN, buff=0.4)
-        self.play(FadeIn(lt))
-        self.add(source("U.S. federal capital-gains rates; brackets depend on income."))
-        self.hold(4)
-        self.clear()
-
-        # Tax drag: pay every year vs. once at the end
         ax = axes([0, 40], [0, 160000], 8.6, 5).shift(DOWN * 0.35 + LEFT * 1.4)
         title = VGroup(
             T("$10,000 earning 7% a year, for 40 years", 28),
-            T("Same returns. Only the timing of the tax bill differs.", 22, MUTED),
+            T(f"Both pay {self.RATE:.0%} tax on their gains. Only when they pay it differs.", 22, MUTED),
         ).arrange(DOWN, aligned_edge=LEFT, buff=0.12).to_corner(UL, buff=0.5)
         self.play(FadeIn(title), Create(ax), FadeIn(x_labels(ax, [0, 10, 20, 30, 40], lambda v: f"year {v}")),
                   FadeIn(y_labels(ax, [50000, 100000, 150000], lambda v: f"${v // 1000}k")))
         yrs = [i / 4 for i in range(161)]
+        trade_rate = 1 + 0.07 * (1 - self.RATE)
         hold_path = series_path(ax, yrs, [10000 * 1.07**y for y in yrs], BLUE)
-        trade_rate = 1 + 0.07 * (1 - 0.22)
         trade_path = series_path(ax, yrs, [10000 * trade_rate**y for y in yrs], ORANGE)
         self.play(Create(hold_path), Create(trade_path), run_time=5, rate_func=linear)
+        self.hold(1.5)
+
         pre = 10000 * 1.07**40
-        after = 10000 + (pre - 10000) * 0.85
+        after = 10000 + (pre - 10000) * (1 - self.RATE)
+        traded = 10000 * trade_rate**40
         bite = Line(ax.c2p(40, pre), ax.c2p(40, after), color=BLUE, stroke_width=4)
         self.play(Create(bite))
-        traded = 10000 * trade_rate**40
         self.play(
-            FadeIn(VGroup(T("hold, pay 15% at the end", 20, BLUE), T(money(after), 30, weight=MEDIUM))
+            FadeIn(VGroup(T("hold, pay once at the end", 20, BLUE), T(money(after), 30, weight=MEDIUM))
                    .arrange(DOWN, aligned_edge=LEFT, buff=0.05).next_to(ax.c2p(40, after), RIGHT, buff=0.2)),
-            FadeIn(VGroup(T("sell yearly, pay 22% each time", 20, ORANGE), T(money(traded), 30, weight=MEDIUM))
+            FadeIn(VGroup(T("sell every year, pay every year", 20, ORANGE), T(money(traded), 30, weight=MEDIUM))
                    .arrange(DOWN, aligned_edge=LEFT, buff=0.05).next_to(ax.c2p(40, traded), RIGHT, buff=0.2)),
         )
-        self.hold(4)
-        self.clear()
-
-
-class Accounts(Clip):
-    """401(k) match and Roth IRA: where the tax-free money is."""
-
-    def construct(self):
-        # Employer match
-        you = VGroup(Circle(0.75, fill_color=BLUE, fill_opacity=1, stroke_width=0), T("$1", 34, BG, weight=BOLD))
-        boss = VGroup(Circle(0.75, fill_color=GOLD, fill_opacity=1, stroke_width=0), T("$1", 34, BG, weight=BOLD))
-        you_lbl = T("you put in", 22, MUTED).next_to(you, DOWN, buff=0.25)
-        self.play(FadeIn(you, scale=0.6), FadeIn(you_lbl))
-        self.hold(1)
-        boss.next_to(you, RIGHT, buff=0.4)
-        boss_lbl = T("employer match", 22, MUTED).next_to(boss, DOWN, buff=0.25)
-        self.play(FadeIn(boss, shift=LEFT * 0.5), FadeIn(boss_lbl))
-        gain = VGroup(T("+100%", 60, GOLD, weight=MEDIUM), T("before the market does anything", 22, MUTED))
-        gain.arrange(DOWN, buff=0.1).next_to(VGroup(you, boss), UP, buff=0.6)
-        self.play(FadeIn(gain, shift=UP * 0.2))
-        self.add(source("A 401(k) match is often 50–100% of what you put in, up to a limit."))
-        self.hold(4)
-        self.clear()
-
-        # Roth IRA vs. a taxable account: same growth, different exit
-        title = VGroup(
-            T("$1,000 invested at age 22, grown at 7% until 62", 28),
-            T("Roth IRA: you pay tax on the money going in, never on what it grows into", 22, MUTED),
-        ).arrange(DOWN, aligned_edge=LEFT, buff=0.12).to_corner(UL, buff=0.5)
-        self.play(FadeIn(title))
-        final = 1000 * 1.07**40
-        tax = (final - 1000) * 0.15
-        scale = 4.6 / final
-        base = -2.6
-        cols = VGroup()
-        for i, (name, color, keep) in enumerate([("Roth IRA", BLUE, final), ("Taxable account", ORANGE, final - tax)]):
-            x = -2.2 + i * 4.4
-            bar = Rectangle(width=2.2, height=keep * scale, stroke_width=0, fill_color=color, fill_opacity=1)
-            bar.move_to([x, base + keep * scale / 2, 0])
-            parts = VGroup(bar, T(name, 24).next_to(bar, DOWN, buff=0.2))
-            top = T(money(keep), 32, weight=MEDIUM)
-            if keep < final:
-                cut = Rectangle(width=2.2, height=tax * scale, stroke_color=ORANGE, stroke_width=2, fill_opacity=0)
-                cut = DashedVMobject(cut, num_dashes=30).next_to(bar, UP, buff=0)
-                parts.add(cut, T(f"−{money(tax)} tax on gains", 20, ORANGE).next_to(cut, RIGHT, buff=0.2))
-                top.next_to(cut, UP, buff=0.12)
-            else:
-                top.next_to(bar, UP, buff=0.12)
-            parts.add(top)
-            cols.add(parts)
-        for c in cols:
-            self.play(GrowFromEdge(c[0], DOWN), FadeIn(c[1:]), run_time=1)
-            self.hold(1)
-        self.add(source("Assumes a 15% long-term capital-gains rate. Roth IRA limit: $7,500 for 2026; requires earned income."))
-        self.hold(4)
+        self.add(source("Illustrative. Many countries tax gains only when you sell; rates and rules vary by country."))
+        self.hold(5)
         self.clear()
 
 
@@ -924,10 +868,10 @@ class Priorities(Clip):
     def construct(self):
         names = [
             ("Emergency fund", "3–6 months of costs"),
-            ("Credit-card debt", "~20%+ interest"),
-            ("401(k) match", "free money"),
-            ("Roth IRA", "up to $7,500 a year"),
-            ("Brokerage account", "no limit"),
+            ("High-interest debt", "credit cards, ~20%+"),
+            ("Employer match", "free money, if offered"),
+            ("Tax-free account", "if your country has one"),
+            ("Index funds", "everything else"),
         ]
         buckets, fills, labels = [], [], VGroup()
         bw, bh = 1.7, 1.15

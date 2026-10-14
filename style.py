@@ -5,6 +5,7 @@ from pathlib import Path
 
 import manimpango
 from manim import *
+from manim.animation.animation import prepare_animation
 
 ROOT = Path(__file__).parent
 
@@ -87,9 +88,23 @@ def series_path(ax, xs, ys, color, width=4):
 
 
 class Clip(Scene):
-    """A clip the speaker talks over: it ends on a held frame, then clears."""
+    """A clip the speaker talks over: it ends on a held frame, then clears.
 
-    HOLD = 2.5
+    PACE stretches every animation and pause, so the whole talk can be slowed down
+    or sped up in one place. HOLD is the default pause at a moment worth talking over.
+    """
+
+    PACE = 1.5
+    HOLD = 3.5
+
+    def play(self, *animations, run_time=None, **kwargs):
+        animations = [prepare_animation(a) for a in animations]
+        if run_time is None:
+            run_time = max(a.get_run_time() for a in animations)
+        super().play(*animations, run_time=run_time * self.PACE, **kwargs)
+
+    def wait(self, duration=1.0, *args, **kwargs):
+        super().wait(duration * self.PACE, *args, **kwargs)
 
     def hold(self, seconds=None):
         self.wait(self.HOLD if seconds is None else seconds)

@@ -19,10 +19,9 @@ SCENES=(
   Ownership CashVsInflation
   StockPicking ActiveFunds IndexFund Fees
   Compounding StartEarly
-  TimeHorizon Crashes
-  DollarCostAveraging BeatTheCouch TimingRules BestDays
-  Taxes Accounts
-  Priorities
+  TimeHorizon Crashes BeatTheCouch TimingRules BestDays
+  DollarCostAveraging LumpSum
+  Taxes Priorities
 )
 
 [ -f data/derived.json ] || python data/prepare.py

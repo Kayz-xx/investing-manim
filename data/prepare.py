@@ -236,22 +236,14 @@ def main():
             windows.append({"start": dates[s], "edge": growth(w, f) / (w[-1] / w[0]) - 1})
     out["all_windows"] = windows
 
-    # Win rate for a grid of rules
-    grid_levels = [0.05, 0.10, 0.15, 0.20]
-    grid = []
-    for drop in grid_levels:
-        row = []
-        for rebound in grid_levels:
-            wins = played = 0
-            for s in two_year_windows(close):
-                w = close[s : s + TRADING_DAYS_2Y]
-                f, t = timing_rule(w, drop, rebound)
-                if t:
-                    played += 1
-                    wins += growth(w, f) > w[-1] / w[0]
-            row.append(wins / played)
-        grid.append(row)
-    out["rule_grid"] = {"levels": grid_levels, "win_rate": grid}
+    # A lump sum invested at once vs. spread over 12 monthly buys (cash waiting earns nothing),
+    # compared one year after the first buy, for every start month
+    lump = []
+    for i in range(len(keys) - 12):
+        at_once = tr[keys[i + 12]] / tr[keys[i]]
+        spread = sum(tr[keys[i + 12]] / tr[keys[i + k]] for k in range(12)) / 12
+        lump.append({"start": keys[i], "edge": at_once / spread - 1})
+    out["lump_sum"] = lump
 
     with open(HERE / "derived.json", "w") as f:
         json.dump(out, f, separators=(",", ":"))
@@ -260,6 +252,7 @@ def main():
     print(f"game {game['start']}..{game['end']}: couch {game['couch']:.3f}, player {game['player']:.3f}, "
           f"replays beaten by player: {sum(r < game['player'] for r in replays) / 10:.1f}%")
     print(f"rule beat the couch in {sum(w['edge'] > 0 for w in windows) / len(windows):.0%} of {len(windows)} windows")
+    print(f"lump sum ahead in {sum(x['edge'] > 0 for x in lump) / len(lump):.0%} of {len(lump)} start months")
     print(f"best days: full {out['best_days']['final_full']:.0f}, missed {out['best_days']['final_missed']}")
 
 

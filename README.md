@@ -23,13 +23,21 @@ Each clip ends on a held frame, so there's time to talk before it clears.
 | 8 | `StartEarly` | Emma pays in from 22 to 32 and stops; Liam pays in from 32 to 65. Then bars for starting at 22, 32 and 42 | Emma puts in $24k and ends with **$320,827**; Liam puts in $79k and ends with **$296,151**. Each decade of waiting roughly halves the result |
 | 9 | `TimeHorizon` | One dot per start month since 1927: the S&P 500's average yearly return held for 1, 5, 10 and 20 years | Lost money **26% / 12% / 5% / 0%** of the time. No 20-year stretch lost money, even after inflation |
 | 10 | `Crashes` | S&P 500 from 1928 to 2026 on a log scale, with every 20%+ drop shaded from peak to recovery | −86% (1929), −48% (1973), −34% (1987), −49% (2000), −57% (2008), −34% (2020). Every one ended in a new high |
-| 11 | `DollarCostAveraging` | $100 a month through 2008–2010 on real prices, with each month's shares stacked as dots | Crash months buy almost twice the shares. $3,600 in monthly became **$4,162**; all in Jan 2008 it was $3,242 |
-| 12 | `BeatTheCouch` | The [beatthecouch.com](https://beatthecouch.com) game on a hidden 2-year stretch, played live, then revealed and audited against 1,000 random replays | Couch **$11,426** vs. your rule **$9,744**. Your timing did worse than **99.5%** of random timings |
-| 13 | `TimingRules` | The same rule on all 885 two-year stretches since 1928, then a 4×4 grid of rule variations | The couch won **64%**. The best of 16 rules won only **43%** of the time |
-| 14 | `BestDays` | All 5,026 trading days of 2000–2019 as bars; the 10 best and 10 worst light up, then two growth lines | 8 of the 10 best days came in the same months as the worst. Missing them turns $21,943 into **$10,960** |
-| 15 | `Taxes` | A one-year timeline (10–37% vs. 0/15/20%), then 40 years of yearly selling vs. holding | Hold: **$128,783** after tax. Sell yearly: **$83,851**, with identical returns |
-| 16 | `Accounts` | A 401(k) match as two coins, then a Roth IRA vs. a taxable account | A match is **+100%** before any market move. The Roth keeps all $14,974; the taxable account keeps $12,878 |
-| 17 | `Priorities` | Paycheck money overflowing buckets in order, then a target-date glide path | Emergency fund → credit cards → 401(k) match → Roth IRA → brokerage |
+| 11 | `BeatTheCouch` | The [beatthecouch.com](https://beatthecouch.com) game on a hidden 2-year stretch, played live, then revealed and audited against 1,000 random replays | Couch **$11,426** vs. your rule **$9,744**. Your timing did worse than **99.5%** of random timings |
+| 12 | `TimingRules` | The same rule on all 885 two-year stretches since 1928 | The couch won **64%** of the time |
+| 13 | `BestDays` | All 5,026 trading days of 2000–2019 as bars; the 10 best and 10 worst light up, then two growth lines | 8 of the 10 best days came in the same months as the worst. Missing them turns $21,943 into **$10,960** |
+| 14 | `DollarCostAveraging` | $100 a month through 2008–2010 on real prices, with each month's shares stacked as dots. Then the crash months are paused | Crash months buy almost twice the shares. Kept buying: **$4,162**. Paused Oct 2008 – Dec 2009, then put the saved cash in: **$3,813** |
+| 15 | `LumpSum` | Every start month since 1927: a lump sum invested at once vs. spread over 12 months, one year later | All at once came out ahead **73%** of the time |
+| 16 | `Taxes` | 40 years of $10,000 at 7%, both paying 20% tax on gains: one sells every year, the other holds | Hold and pay once: **$121,796**. Sell every year: **$88,421** |
+| 17 | `Priorities` | Paycheck money overflowing buckets in order, then a target-date glide path | Emergency fund → high-interest debt → employer match → tax-free account (if your country has one) → index funds |
+
+### How "stay invested" and "invest every month" fit together
+
+They're the same message: **money in the market as early as possible, and kept there.**
+
+- If you **already have a lump sum**, invest it now (clip 15). Markets rise more often than they fall, so all-at-once beat spreading it out about 3 times in 4.
+- If your money **arrives monthly** (most students), invest each paycheck as it comes. That isn't a strategy for "beating" a lump sum; it's simply investing the money as soon as you have it.
+- Making it **automatic** is what keeps you invested. It removes the temptation to pause when prices fall (clip 14), which is just market timing again (clips 11–13). The lower average cost from buying more in bad months is a side effect, not the reason.
 
 ## Rendering
 
@@ -47,7 +55,7 @@ manim -pql investing.py BeatTheCouch     # one clip
 
 - **Font:** Roboto ships in `fonts/` (Apache 2.0) and is registered at startup, so nothing needs installing. To switch fonts (e.g. Montserrat), drop the `.ttf` files in `fonts/` and change `FONT` in `style.py`.
 - **Colors:** `style.py` holds the palette. Every two-way comparison uses blue vs. orange, which stays distinct for colorblind viewers; gold marks the key number.
-- **Pauses:** to make the held frames longer or shorter, change `Clip.HOLD` in `style.py`.
+- **Pace:** `Clip.PACE` in `style.py` stretches every animation and pause (1.5 = 50% slower than Manim's defaults); `Clip.HOLD` sets the pause at each moment worth talking over.
 
 ## Data and method
 
@@ -58,7 +66,8 @@ manim -pql investing.py BeatTheCouch     # one clip
 - **Timing game:** modeled on [beatthecouch.com](https://beatthecouch.com), where you get $10,000 and a hidden 2-year window of 1928–2019 S&P 500 history, and the couch buys on day one. The rule here is "sell after a 10% drop from the high, buy back after a 10% bounce off the low". The audit replays the same number of trades and days out of the market at random dates, 1,000 times, as the site's own check does.
 - **Stocks vs. T-bills:** Bessembinder (2018), *Do stocks outperform Treasury bills?*, Journal of Financial Economics: U.S. common stocks 1926–2016. The 65% figure is the chance that 10 random picks out of 100 include none of the top 4.
 - **Active funds:** the race is a simulation (index − 1.1% a year in fees ± random luck), tuned to match S&P Dow Jones Indices' [SPIVA](https://www.spglobal.com/spdji/en/research-insights/spiva/) finding that ~9 in 10 U.S. large-cap funds trail the S&P 500 over 15 years.
-- **Tax rules:** simplified U.S. federal rules: short-term gains taxed as income (10–37%), long-term at 0/15/20%, and the 2026 IRA limit of $7,500.
+- **Lump sum vs. spread out:** for every start month, a lump sum invested at once vs. the same amount in 12 equal monthly buys, valued 12 months after the first buy. Cash waiting to be invested earns nothing here, which slightly flatters investing at once.
+- **Taxes:** a generic 20% tax on gains, charged when gains are realized. Rules differ by country (some don't tax capital gains, some tax them every year), so the clip says so.
 - The bear markets of 2020 (−33.9%) and 2022 (−25.4%) come after the daily file ends, so their depths and dates are entered by hand in `prepare.py`.
 
 *Educational only, not financial advice. Past returns don't guarantee future ones.*
